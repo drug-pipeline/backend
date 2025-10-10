@@ -1,0 +1,91 @@
+name: Deploy Backend to GCE
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: nimble-poet-474703-f7
+  REGION: asia-northeast3
+  REPO_NAME: backend
+  IMAGE_NAME: backend
+  SSH_HOST: ${{ secrets.SSH_HOST }}
+  SSH_USER: ${{ secrets.SSH_USER }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev -q
+
+      - name: Compose IMAGE_URI
+        run: echo "IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}" >> $GITHUB_ENV
+
+      - name: Build & Push image
+        run: |
+          SHA_TAG=${GITHUB_SHA::7}
+          echo "Building $IMAGE_URI (latest, $SHA_TAG)"
+          docker build -t "$IMAGE_URI:latest" -t "$IMAGE_URI:$SHA_TAG" .
+          docker push "$IMAGE_URI:latest"
+          docker push "$IMAGE_URI:$SHA_TAG"
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write SSH key
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      - name: Deploy on VM
+        env:
+          SSH_HOST: ${{ env.SSH_HOST }}
+          SSH_USER: ${{ env.SSH_USER }}
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          REGION: ${{ env.REGION }}
+          REPO_NAME: ${{ env.REPO_NAME }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ${SSH_USER:-ubuntu}@${SSH_HOST} 'bash -se' <<'EOSH'
+          set -euo pipefail
+
+          echo "=== Pull & restart backend ==="
+          mkdir -p ~/apps/backend
+          cd ~/apps/backend
+
+          echo "=== docker-compose.yml 생성 ==="
+          cat > docker-compose.yml <<EOF
+          services:
+            backend:
+              image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
+              restart: always
+              ports:
+                - "8080:8080"
+          EOF
+
+          echo "=== Pull latest image ==="
+          docker compose pull
+
+          echo "=== Restart containers ==="
+          docker compose up -d
+
+          echo "=== Remove old dangling images ==="
+          docker image prune -f || true
+
+          echo "=== Done ==="
+          EOSH
