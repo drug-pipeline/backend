@@ -52,42 +52,25 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
           chmod 600 key.pem
 
-      - name: Deploy on VM
+      - name: Deploy on VM (pull backend + mysql)
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          PROJECT_ID: ${{ env.PROJECT_ID }}
-          REGION: ${{ env.REGION }}
-          REPO_NAME: ${{ env.REPO_NAME }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          SSH_HOST: ${{ env.SSH_HOST }}
+          SSH_USER: ${{ env.SSH_USER }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ${SSH_USER:-ubuntu}@${SSH_HOST} \
-            "PROJECT_ID=$PROJECT_ID REGION=$REGION REPO_NAME=$REPO_NAME IMAGE_NAME=$IMAGE_NAME bash -se" <<'EOSH'
-            set -euo pipefail
+          ssh -o StrictHostKeyChecking=no -i key.pem ${SSH_USER:-ubuntu}@${SSH_HOST} 'bash -se' <<'EOSH'
+          set -euo pipefail
+          cd ~/apps/stack
 
-            IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest"
+          if [ ! -f docker-compose.yml ]; then echo "ERROR: ~/apps/stack/docker-compose.yml missing"; exit 1; fi
+          if [ ! -f .env ]; then echo "ERROR: ~/apps/stack/.env missing"; exit 1; fi
 
-            mkdir -p ~/apps/backend
-            cd ~/apps/backend
+          echo "--- Pulling images (backend + mysql) ---"
+          docker compose pull mysql backend
 
-            cat > docker-compose.yml <<EOF
-            services:
-              backend:
-                image: ${IMAGE_URI}
-                restart: unless-stopped
-                ports:
-                  - "8080:8080"
-                environment:
-                  - PORT=8080
-            EOF
+          echo "--- Restarting services ---"
+          docker compose up -d mysql backend
 
-            docker compose pull
-            docker compose up -d
-            docker image prune -f || true
-
-            echo "--- ps ---"
-            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"
-            echo "--- curl ---"
-            (curl -sSI http://127.0.0.1 || true) | sed -n '1,20p'
+          echo "--- Wait for MySQL health ---"
+          docker compose wait mysql || true
+          docker compose ps
           EOSH
-      
