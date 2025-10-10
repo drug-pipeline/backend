@@ -6,5 +6,5 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class HelloController {
     @GetMapping("/")
-    public String hello() { return "Hello from Spring Boot on Cloud Run"; }
+    public String hello() { return "Hello from Spring Boot on Cloud Run!"; }
 }
