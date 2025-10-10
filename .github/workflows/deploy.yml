@@ -71,6 +71,5 @@ jobs:
           docker compose up -d mysql backend
 
           echo "--- Wait for MySQL health ---"
-          docker compose wait mysql || true
           docker compose ps
           EOSH
