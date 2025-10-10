@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: backend
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # 처음엔 update도 가능하지만, 운영은 validate + Flyway 권장
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc.time_zone: Asia/Seoul
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+server:
+  port: ${PORT:8080}
