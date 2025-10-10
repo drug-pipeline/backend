@@ -54,38 +54,40 @@ jobs:
 
       - name: Deploy on VM
         env:
-          SSH_HOST: ${{ env.SSH_HOST }}
-          SSH_USER: ${{ env.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
           PROJECT_ID: ${{ env.PROJECT_ID }}
           REGION: ${{ env.REGION }}
           REPO_NAME: ${{ env.REPO_NAME }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ${SSH_USER:-ubuntu}@${SSH_HOST} 'bash -se' <<'EOSH'
-          set -euo pipefail
+          ssh -o StrictHostKeyChecking=no -i key.pem ${SSH_USER:-ubuntu}@${SSH_HOST} \
+            "PROJECT_ID=$PROJECT_ID REGION=$REGION REPO_NAME=$REPO_NAME IMAGE_NAME=$IMAGE_NAME bash -se" <<'EOSH'
+            set -euo pipefail
 
-          echo "=== Pull & restart backend ==="
-          mkdir -p ~/apps/backend
-          cd ~/apps/backend
+            IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest"
 
-          echo "=== docker-compose.yml 생성 ==="
-          cat > docker-compose.yml <<EOF
-          services:
-            backend:
-              image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest
-              restart: always
-              ports:
-                - "8080:8080"
-          EOF
+            mkdir -p ~/apps/backend
+            cd ~/apps/backend
 
-          echo "=== Pull latest image ==="
-          docker compose pull
+            cat > docker-compose.yml <<EOF
+            services:
+              backend:
+                image: ${IMAGE_URI}
+                restart: unless-stopped
+                ports:
+                  - "8080:8080"
+                environment:
+                  - PORT=8080
+            EOF
 
-          echo "=== Restart containers ==="
-          docker compose up -d
+            docker compose pull
+            docker compose up -d
+            docker image prune -f || true
 
-          echo "=== Remove old dangling images ==="
-          docker image prune -f || true
-
-          echo "=== Done ==="
+            echo "--- ps ---"
+            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}\t{{.Status}}"
+            echo "--- curl ---"
+            (curl -sSI http://127.0.0.1 || true) | sed -n '1,20p'
           EOSH
+      
