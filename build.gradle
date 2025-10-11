@@ -36,8 +36,9 @@ dependencies {
 
 	/* === Flyway (Starter 없음 → core만 필요) === */
 	implementation 'org.flywaydb:flyway-core'
+
 	// 필요시 DB별 모듈 (부트가 버전 관리해주면 생략 가능)
-	// implementation 'org.flywaydb:flyway-mysql'
+	implementation 'org.flywaydb:flyway-mysql'
 
 	/* === Lombok (컴파일 타임 코드 생성) === */
 	compileOnly 'org.projectlombok:lombok'
