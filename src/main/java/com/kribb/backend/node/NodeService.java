@@ -1,9 +1,7 @@
 // NodeService.java
 package com.kribb.backend.node;
 
-import com.kribb.backend.node.dto.LinkCreateRequest;
-import com.kribb.backend.node.dto.NodeCreateRequest;
-import com.kribb.backend.node.dto.NodeResponse;
+import com.kribb.backend.node.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +13,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -82,5 +81,34 @@ public class NodeService {
             out.addAll(nodeFileRepository.findByNodeId(l.getSourceNodeId()));
         }
         return out;
+    }
+
+    @Transactional(readOnly = true)
+    public List<NodeResponse> listByProject(Long projectId) {
+        return nodeRepository.findByProjectId(projectId).stream()
+                .map(n -> new NodeResponse(n.getId(), n.getProjectId(), n.getType(),
+                        n.getName(), n.getStatus(), n.getX(), n.getY()))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public NodeResponse getOne(Long nodeId) {
+        NodeEntity n = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new IllegalArgumentException("node not found: " + nodeId));
+        return new NodeResponse(n.getId(), n.getProjectId(), n.getType(),
+                n.getName(), n.getStatus(), n.getX(), n.getY());
+    }
+
+    @Transactional(readOnly = true)
+    public NodeDetailResponse getDetail(Long nodeId) {
+        NodeEntity n = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new IllegalArgumentException("node not found: " + nodeId));
+        List<NodeFileDto> files = nodeFileRepository.findByNodeId(nodeId).stream()
+                        .map(f -> new NodeFileDto(f.getId(), f.getOriginalName(), f.getContentType(),
+                        f.getSize(), f.getCreatedAt()))
+                .collect(Collectors.toList());
+        NodeResponse node = new NodeResponse(n.getId(), n.getProjectId(), n.getType(),
+                n.getName(), n.getStatus(), n.getX(), n.getY());
+        return new NodeDetailResponse(node, files);
     }
 }

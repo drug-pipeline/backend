@@ -3,6 +3,7 @@ package com.kribb.backend.node;
 
 import com.kribb.backend.node.dto.LinkCreateRequest;
 import com.kribb.backend.node.dto.NodeCreateRequest;
+import com.kribb.backend.node.dto.NodeDetailResponse;
 import com.kribb.backend.node.dto.NodeResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -52,5 +53,20 @@ public class NodeController {
     @GetMapping("/projects/{projectId}/nodes/{nodeId}/inputs")
     public List<NodeFileEntity> upstreamInputs(@PathVariable Long projectId, @PathVariable Long nodeId) {
         return nodeService.upstreamFiles(projectId, nodeId);
+    }
+
+    @GetMapping("/projects/{projectId}/nodes")
+    public List<NodeResponse> listNodes(@PathVariable Long projectId) {
+        return nodeService.listByProject(projectId);
+    }
+
+    @GetMapping("/nodes/{nodeId}")
+    public NodeResponse getNode(@PathVariable Long nodeId) {
+        return nodeService.getOne(nodeId);
+    }
+
+    @GetMapping("/nodes/{nodeId}/detail")
+    public NodeDetailResponse getNodeDetail(@PathVariable Long nodeId) {
+        return nodeService.getDetail(nodeId);
     }
 }
