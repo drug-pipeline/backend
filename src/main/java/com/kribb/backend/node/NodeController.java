@@ -1,10 +1,7 @@
 // NodeController.java
 package com.kribb.backend.node;
 
-import com.kribb.backend.node.dto.LinkCreateRequest;
-import com.kribb.backend.node.dto.NodeCreateRequest;
-import com.kribb.backend.node.dto.NodeDetailResponse;
-import com.kribb.backend.node.dto.NodeResponse;
+import com.kribb.backend.node.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -68,5 +65,10 @@ public class NodeController {
     @GetMapping("/nodes/{nodeId}/detail")
     public NodeDetailResponse getNodeDetail(@PathVariable Long nodeId) {
         return nodeService.getDetail(nodeId);
+    }
+
+    @GetMapping(path = "/api/projects/{projectId}/links", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<LinkResponse> listProjectLinks(@PathVariable Long projectId) {
+        return nodeService.listLinks(projectId);
     }
 }

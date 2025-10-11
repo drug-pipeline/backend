@@ -111,4 +111,19 @@ public class NodeService {
                 n.getName(), n.getStatus(), n.getX(), n.getY());
         return new NodeDetailResponse(node, files);
     }
+
+    @Transactional(readOnly = true)
+    public List<LinkResponse> listLinks(Long projectId) {
+        return nodeLinkRepository.findByProjectId(projectId)
+                .stream()
+                .map(l -> new LinkResponse(
+                        l.getId(),
+                        l.getProjectId(),
+                        l.getSourceNodeId(),
+                        l.getTargetNodeId(),
+                        l.getCreatedAt()
+                ))
+                .toList();
+    }
+
 }
