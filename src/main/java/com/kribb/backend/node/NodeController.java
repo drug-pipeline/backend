@@ -3,10 +3,18 @@ package com.kribb.backend.node;
 
 import com.kribb.backend.node.dto.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -87,5 +95,43 @@ public class NodeController {
             @PathVariable Long visualizerId
     ) {
         return nodeService.listVisualizerInputs(projectId, visualizerId);
+    }
+
+    /** 파일 바이너리 다운로드 (원본 MIME 유지 + inline 표시) */
+    @GetMapping("/nodes/{fileId}/content")
+    public ResponseEntity<Resource> getFileContent(@PathVariable Long fileId) throws Exception {
+        NodeFileEntity f = nodeFileRepository.findById(fileId)
+                .orElseThrow(() -> new IllegalArgumentException("file not found: " + fileId));
+
+        Path path = Path.of(f.getStoredPath());
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException("stored file missing: " + path);
+        }
+
+        // MIME 설정 (없으면 octet-stream)
+        String mime = (f.getContentType() != null && !f.getContentType().isBlank())
+                ? f.getContentType()
+                : "application/octet-stream";
+        MediaType mediaType;
+        try {
+            mediaType = MediaType.parseMediaType(mime);
+        } catch (Exception ignore) {
+            mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        // Content-Disposition: inline; filename="..."; filename*=UTF-8''...
+        ContentDisposition cd = ContentDisposition.inline()
+                .filename(f.getOriginalName(), StandardCharsets.UTF_8)
+                .build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(mediaType);
+        headers.setContentDisposition(cd);
+        headers.setContentLength(Files.size(path));
+
+        Resource body = new FileSystemResource(path);
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(body);
     }
 }
