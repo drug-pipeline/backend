@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   application:
     name: pipeline-api
   datasource:
@@ -24,3 +28,6 @@ server:
 app:
   cors:
     allow-origins: "http://localhost:3000"
+  storage:
+    base-dir: uploads
+    pdb-dir: pdb
