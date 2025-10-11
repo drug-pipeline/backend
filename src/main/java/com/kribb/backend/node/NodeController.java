@@ -67,7 +67,7 @@ public class NodeController {
         return nodeService.getDetail(nodeId);
     }
 
-    @GetMapping(path = "/api/projects/{projectId}/links", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(path = "/projects/{projectId}/links", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<LinkResponse> listProjectLinks(@PathVariable Long projectId) {
         return nodeService.listLinks(projectId);
     }
