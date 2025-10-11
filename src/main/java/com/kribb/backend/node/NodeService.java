@@ -126,4 +126,36 @@ public class NodeService {
                 .toList();
     }
 
+    // NodeService.java - updateNode 수정본
+    public NodeResponse updateNode(Long projectId, Long nodeId, NodeUpdateRequest body) {
+        NodeEntity node = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new IllegalArgumentException("Node not found: " + nodeId));
+
+        if (!node.getProjectId().equals(projectId)) {
+            throw new IllegalArgumentException("ProjectId mismatch");
+        }
+
+        if (body.name() != null) node.setName(body.name());
+        if (body.status() != null) node.setStatus(body.status());
+        if (body.x() != null) node.setX(body.x());
+        if (body.y() != null) node.setY(body.y());
+        if (body.metaJson() != null) node.setMetaJson(body.metaJson());
+
+        NodeEntity updated = nodeRepository.save(node);
+
+        // ✅ 정적 팩토리 메서드 대신 직접 생성
+        return new NodeResponse(
+                updated.getId(),
+                updated.getProjectId(),
+                updated.getType(),
+                updated.getName(),
+                updated.getStatus(),
+                updated.getX(),
+                updated.getY()
+        );
+    }
+
+
+
+
 }

@@ -27,6 +27,15 @@ public class NodeController {
         return nodeService.create(req);
     }
 
+    @PutMapping("/projects/{projectId}/nodes/{nodeId}")
+    public NodeResponse updateNode(
+            @PathVariable Long projectId,
+            @PathVariable Long nodeId,
+            @RequestBody NodeUpdateRequest body
+    ) {
+        return nodeService.updateNode(projectId, nodeId, body);
+    }
+
     // 2) 노드에 파일 업로드
     @PostMapping(path = "/nodes/{nodeId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public NodeFileEntity upload(@PathVariable Long nodeId, @RequestPart("file") MultipartFile file) {
