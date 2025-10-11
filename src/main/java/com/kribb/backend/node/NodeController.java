@@ -1,10 +1,9 @@
-// src/main/java/com/kribb/backend/node/NodeController.java
+// NodeController.java
 package com.kribb.backend.node;
 
+import com.kribb.backend.node.dto.LinkCreateRequest;
 import com.kribb.backend.node.dto.NodeCreateRequest;
 import com.kribb.backend.node.dto.NodeResponse;
-import com.kribb.backend.node.dto.NodeUpdateRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -12,53 +11,46 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/projects/{projectId}/nodes")
 @RequiredArgsConstructor
+@RestController
+@RequestMapping("/api")
 public class NodeController {
 
     private final NodeService nodeService;
+    private final NodeRepository nodeRepository;
+    private final NodeFileRepository nodeFileRepository;
 
-    // 프로젝트 내 노드 목록
-    @GetMapping
-    public List<NodeResponse> list(@PathVariable Long projectId) {
-        return nodeService.list(projectId);
-    }
-
-    // 단일 조회
-    @GetMapping("/{id}")
-    public NodeResponse get(@PathVariable Long id) {
-        return nodeService.get(id);
-    }
-
-    // 범용 노드 생성(JSON)
-    @PostMapping
-    public NodeResponse create(@RequestBody @Valid NodeCreateRequest req) {
+    // 1) 노드 생성
+    @PostMapping("/projects/{projectId}/nodes")
+    public NodeResponse createNode(@PathVariable Long projectId, @RequestBody NodeCreateRequest body) {
+        // path의 projectId를 신뢰 소스로 사용
+        NodeCreateRequest req = new NodeCreateRequest(
+                projectId, body.type(), body.name(), body.status(), body.x(), body.y(), body.metaJson());
         return nodeService.create(req);
     }
 
-    // 업데이트
-    @PatchMapping("/{id}")
-    public NodeResponse update(@PathVariable Long id, @RequestBody @Valid NodeUpdateRequest req) {
-        return nodeService.update(id, req);
+    // 2) 노드에 파일 업로드
+    @PostMapping(path = "/nodes/{nodeId}/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public NodeFileEntity upload(@PathVariable Long nodeId, @RequestPart("file") MultipartFile file) {
+        return nodeService.upload(nodeId, file);
     }
 
-    // 삭제
-    @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        nodeService.delete(id);
+    // (옵션) 노드 파일 목록
+    @GetMapping("/nodes/{nodeId}/files")
+    public List<NodeFileEntity> listFiles(@PathVariable Long nodeId) {
+        return nodeFileRepository.findByNodeId(nodeId);
     }
 
-    // ===== PDB 업로드 전용 =====
-    // multipart/form-data: fields => name, x, y, file
-    @PostMapping(path = "/pdb", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public NodeResponse uploadPdb(
-            @PathVariable Long projectId,
-            @RequestPart(required = false) String name,
-            @RequestPart(required = false) Double x,
-            @RequestPart(required = false) Double y,
-            @RequestPart("file") MultipartFile file
-    ) {
-        return nodeService.uploadPdb(projectId, name, x, y, file);
+    // 3) 노드 링크 생성
+    @PostMapping("/projects/{projectId}/links")
+    public NodeLinkEntity link(@PathVariable Long projectId, @RequestBody LinkCreateRequest body) {
+        LinkCreateRequest req = new LinkCreateRequest(projectId, body.sourceNodeId(), body.targetNodeId());
+        return nodeService.link(req);
+    }
+
+    // 4) 후행 노드에서 선행 노드 파일 참조 목록 얻기 (직전 노드 기준)
+    @GetMapping("/projects/{projectId}/nodes/{nodeId}/inputs")
+    public List<NodeFileEntity> upstreamInputs(@PathVariable Long projectId, @PathVariable Long nodeId) {
+        return nodeService.upstreamFiles(projectId, nodeId);
     }
 }

@@ -1,4 +1,4 @@
-// NodeEntity.java
+// NodeLinkEntity.java
 package com.kribb.backend.node;
 
 import jakarta.persistence.*;
@@ -8,30 +8,19 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.Instant;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-@Entity @Table(name = "node")
-public class NodeEntity {
+@Entity @Table(name = "node_link")
+public class NodeLinkEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
-    private NodeType type;
+    @Column(name = "source_node_id", nullable = false)
+    private Long sourceNodeId;
 
-    @Column(nullable = false, length = 255)
-    private String name;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
-    private NodeStatus status;
-
-    private Double x;
-    private Double y;
-
-    @Column(name = "meta_json", columnDefinition = "json")
-    private String metaJson;
+    @Column(name = "target_node_id", nullable = false)
+    private Long targetNodeId;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

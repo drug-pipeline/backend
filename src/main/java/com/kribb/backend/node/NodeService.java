@@ -1,114 +1,86 @@
-// src/main/java/com/kribb/backend/node/NodeService.java
+// NodeService.java
 package com.kribb.backend.node;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kribb.backend.node.dto.LinkCreateRequest;
 import com.kribb.backend.node.dto.NodeCreateRequest;
 import com.kribb.backend.node.dto.NodeResponse;
-import com.kribb.backend.node.dto.NodeUpdateRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class NodeService {
-
     private final NodeRepository nodeRepository;
-    private final ObjectMapper objectMapper; // ← 스프링이 자동 주입
+    private final NodeFileRepository nodeFileRepository;
+    private final NodeLinkRepository nodeLinkRepository;
 
-    @Value("${app.storage.base-dir:uploads}")
-    private String baseDir;
-
-    @Value("${app.storage.pdb-dir:pdb}")
-    private String pdbDir;
-
-    public List<NodeResponse> list(Long projectId) {
-        return nodeRepository.findByProjectIdOrderByIdAsc(projectId)
-                .stream().map(NodeResponse::from).toList();
-    }
+    private final Path root = Path.of("/data/nodes"); // 로컬 디스크 저장(최소구성)
 
     public NodeResponse create(NodeCreateRequest req) {
-        String metaJson = toJsonOrNull(req.meta());
-
-        NodeEntity e = NodeEntity.builder()
+        NodeEntity saved = nodeRepository.save(NodeEntity.builder()
                 .projectId(req.projectId())
                 .type(req.type())
                 .name(req.name())
                 .status(req.status())
                 .x(req.x())
                 .y(req.y())
-                .meta(metaJson) // ← 직렬화된 JSON 문자열 저장
-                .build();
-
-        return NodeResponse.from(nodeRepository.save(e));
+                .metaJson(req.metaJson())
+                .createdAt(Instant.now())
+                .build());
+        return new NodeResponse(saved.getId(), saved.getProjectId(), saved.getType(),
+                saved.getName(), saved.getStatus(), saved.getX(), saved.getY());
     }
 
-    public NodeResponse get(Long id) {
-        return NodeResponse.from(find(id));
-    }
-
-    public NodeResponse update(Long id, NodeUpdateRequest req) {
-        NodeEntity e = find(id);
-        if (req.name() != null)   e.setName(req.name());
-        if (req.status() != null) e.setStatus(req.status());
-        if (req.x() != null)      e.setX(req.x());
-        if (req.y() != null)      e.setY(req.y());
-        if (req.meta() != null)   e.setMeta(toJsonOrNull(req.meta())); // ← 직렬화
-        return NodeResponse.from(e);
-    }
-
-    public void delete(Long id) {
-        nodeRepository.deleteById(id);
-    }
-
-    /** PDB 파일 업로드 + 노드 생성 */
-    public NodeResponse uploadPdb(Long projectId, String name, Double x, Double y, MultipartFile file) {
-        Path dir = Paths.get(baseDir, pdbDir, String.valueOf(projectId));
+    public NodeFileEntity upload(Long nodeId, MultipartFile file) {
+        NodeEntity node = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new IllegalArgumentException("node not found: " + nodeId));
         try {
-            Files.createDirectories(dir);
-            String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
-            String safeName = (name == null || name.isBlank()) ? "pdb" : name.trim();
-            String filename = safeName.replaceAll("[^a-zA-Z0-9._-]", "_") + "_" + ts + ".pdb";
-            Path target = dir.resolve(filename);
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            Files.createDirectories(root.resolve(String.valueOf(nodeId)));
+            String stored = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            Path dest = root.resolve(String.valueOf(nodeId)).resolve(stored);
+            file.transferTo(dest);
 
-            NodeEntity e = NodeEntity.builder()
-                    .projectId(projectId)
-                    .type(NodeType.PDB)
-                    .name(safeName)
-                    .status(NodeStatus.SUCCESS) // 파일 저장 성공 시 SUCCESS
-                    .x(x != null ? x : 0d)
-                    .y(y != null ? y : 0d)
-                    .filePath(target.toString())
+            NodeFileEntity rec = NodeFileEntity.builder()
+                    .nodeId(node.getId())
+                    .originalName(file.getOriginalFilename())
+                    .storedPath(dest.toString())
+                    .contentType(file.getContentType())
+                    .size(file.getSize())
                     .build();
-
-            return NodeResponse.from(nodeRepository.save(e));
-        } catch (Exception ex) {
-            throw new RuntimeException("PDB 파일 저장 실패", ex);
+            return nodeFileRepository.save(rec);
+        } catch (Exception e) {
+            throw new RuntimeException("file upload failed", e);
         }
     }
 
-    private NodeEntity find(Long id) {
-        return nodeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Node not found: " + id));
+    public NodeLinkEntity link(LinkCreateRequest req) {
+        // 같은 프로젝트 내 링크만 허용
+        return nodeLinkRepository.save(NodeLinkEntity.builder()
+                .projectId(req.projectId())
+                .sourceNodeId(req.sourceNodeId())
+                .targetNodeId(req.targetNodeId())
+                .build());
     }
 
-    /** Map -> JSON 문자열 (null 허용) */
-    private String toJsonOrNull(Object meta) {
-        if (meta == null) return null;      // meta 제거
-        try {
-            return objectMapper.writeValueAsString(meta);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("meta 직렬화 실패: " + e.getMessage(), e);
+    /** 4) 후행 노드에서 선행 노드 파일 참조 목록 얻기 (직전 노드들만; 재귀 없이 최소) */
+    @Transactional(readOnly = true)
+    public List<NodeFileEntity> upstreamFiles(Long projectId, Long targetNodeId) {
+        List<NodeLinkEntity> incoming = nodeLinkRepository
+                .findByProjectIdAndTargetNodeId(projectId, targetNodeId);
+        List<NodeFileEntity> out = new ArrayList<>();
+        for (NodeLinkEntity l : incoming) {
+            out.addAll(nodeFileRepository.findByNodeId(l.getSourceNodeId()));
         }
+        return out;
     }
 }
