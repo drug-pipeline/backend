@@ -80,4 +80,12 @@ public class NodeController {
     public List<LinkResponse> listProjectLinks(@PathVariable Long projectId) {
         return nodeService.listLinks(projectId);
     }
+
+    @GetMapping(path = "/projects/{projectId}/nodes/{visualizerId}/inputs", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<VisualizerInputFileDto> listVisualizerInputs(
+            @PathVariable Long projectId,
+            @PathVariable Long visualizerId
+    ) {
+        return nodeService.listVisualizerInputs(projectId, visualizerId);
+    }
 }

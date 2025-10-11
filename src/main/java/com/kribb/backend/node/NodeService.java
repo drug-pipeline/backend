@@ -10,9 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -155,7 +153,40 @@ public class NodeService {
         );
     }
 
+    /**
+     * Visualizer 상류 노드(PDB/SDF/SMILES 등) 중 SUCCESS 상태의 파일들을 전부 모아 반환
+     */
+    @Transactional(readOnly = true)
+    public List<VisualizerInputFileDto> listVisualizerInputs(Long projectId, Long visualizerId) {
+        var incomingLinks = nodeLinkRepository.findByProjectIdAndTargetNodeId(projectId, visualizerId);
 
+        var upstreamNodeIds = incomingLinks.stream()
+                .map(NodeLinkEntity::getSourceNodeId)
+                .distinct()
+                .toList();
+        if (upstreamNodeIds.isEmpty()) return List.of();
+
+        Set<NodeType> ALLOWED_TYPES = EnumSet.of(NodeType.PDB, NodeType.SDF, NodeType.SMILES);
+
+        var filteredUpstreamIds = nodeRepository.findAllById(upstreamNodeIds).stream()
+                .filter(n -> ALLOWED_TYPES.contains(n.getType()))
+                .filter(n -> n.getStatus() == NodeStatus.SUCCESS)
+                .map(NodeEntity::getId)
+                .toList();
+        if (filteredUpstreamIds.isEmpty()) return List.of();
+
+        return nodeFileRepository.findByNodeIdIn(filteredUpstreamIds).stream()
+                .map(f -> new VisualizerInputFileDto(
+                        f.getId(),
+                        f.getNodeId(),
+                        f.getOriginalName(),
+                        f.getStoredPath(),
+                        f.getContentType(),
+                        f.getSize(),
+                        f.getCreatedAt()
+                ))
+                .toList();
+    }
 
 
 }
