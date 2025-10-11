@@ -1,18 +1,26 @@
 spring:
   application:
-    name: backend
+    name: pipeline-api
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/pipeline?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: app
+    password: pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     open-in-view: false
+    show-sql: true
     hibernate:
-      ddl-auto: validate   # 처음엔 update도 가능하지만, 운영은 validate + Flyway 권장
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
-        jdbc.time_zone: Asia/Seoul
-  datasource:
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 server:
-  port: ${PORT:8080}
+  port: 8080
+
+# CORS: Next.js(예: http://localhost:3000)에서 호출
+app:
+  cors:
+    allow-origins: "http://localhost:3000"
