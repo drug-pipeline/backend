@@ -11,7 +11,7 @@ import java.net.URI;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/deepkinome")
+@RequestMapping("/api")
 public class DeepKinomeController {
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -35,31 +35,31 @@ public class DeepKinomeController {
         }
     }
 
-    @GetMapping("/predictions/{taskId}")
+    @GetMapping("/deepkinome/predictions/{taskId}")
     public ResponseEntity<String> predictions(@PathVariable String taskId,
                                               @RequestParam(required = false) Map<String, String> query) {
         return proxyGet("/predictions/" + taskId, query);
     }
 
-    @GetMapping("/admet/{taskId}")
+    @GetMapping("/deepkinome/admet/{taskId}")
     public ResponseEntity<String> admet(@PathVariable String taskId,
                                         @RequestParam(required = false) Map<String, String> query) {
         return proxyGet("/admet/" + taskId, query);
     }
 
-    @GetMapping("/smiles/{taskId}")
+    @GetMapping("/deepkinome/smiles/{taskId}")
     public ResponseEntity<String> smiles(@PathVariable String taskId,
                                          @RequestParam(required = false) Map<String, String> query) {
         return proxyGet("/smiles/" + taskId, query);
     }
 
-    @GetMapping("/docking/{taskId}")
+    @GetMapping("/deepkinome/docking/{taskId}")
     public ResponseEntity<String> docking(@PathVariable String taskId,
                                           @RequestParam(required = false) Map<String, String> query) {
         return proxyGet("/docking/" + taskId, query);
     }
 
-    @GetMapping("/matching/{taskId}")
+    @GetMapping("/deepkinome/matching/{taskId}")
     public ResponseEntity<String> matching(@PathVariable String taskId,
                                            @RequestParam(required = false) Map<String, String> query) {
         return proxyGet("/matching/" + taskId, query);
