@@ -64,4 +64,23 @@ public class DeepKinomeController {
                                            @RequestParam(required = false) Map<String, String> query) {
         return proxyGet("/matching/" + taskId, query);
     }
+
+    // ===== New UniProt endpoints =====
+    @GetMapping("/deepkinome/uniprot")
+    public ResponseEntity<String> uniprot(@RequestParam(required = false) Map<String, String> query) {
+        // expects "?id=<uniprotId>"
+        return proxyGet("/uniprot", query);
+    }
+
+    @GetMapping("/deepkinome/uniprot/structure")
+    public ResponseEntity<String> uniprotStructure(@RequestParam(required = false) Map<String, String> query) {
+        // expects "?id=<uniprotId>"
+        return proxyGet("/uniprot/structure", query);
+    }
+
+    @GetMapping("/deepkinome/uniprot/features")
+    public ResponseEntity<String> uniprotFeatures(@RequestParam(required = false) Map<String, String> query) {
+        // expects "?id=<uniprotId>"
+        return proxyGet("/uniprot/features", query);
+    }
 }
