@@ -83,4 +83,11 @@ public class DeepKinomeController {
         // expects "?id=<uniprotId>"
         return proxyGet("/uniprot/features", query);
     }
+
+    // ===== New PDB endpoint =====
+    @GetMapping("/deepkinome/pdb")
+    public ResponseEntity<String> pdb(@RequestParam(required = false) Map<String, String> query) {
+        // expects "?id=<pdbId>"
+        return proxyGet("/pdb", query);
+    }
 }
