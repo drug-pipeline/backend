@@ -90,4 +90,30 @@ public class DeepKinomeController {
         // expects "?id=<pdbId>"
         return proxyGet("/pdb", query);
     }
+
+    // ===== New Visualizer/Pocket endpoints =====
+    @GetMapping("/deepkinome/visualizer/pdb/target")
+    public ResponseEntity<String> visualizerTarget(@RequestParam(required = false) Map<String, String> query) {
+        // expects ?uniprotId=...&cid=...&taskId=...
+        return proxyGet("/visualizer/pdb/target", query);
+    }
+
+    @GetMapping("/deepkinome/visualizer/pdb/lowest")
+    public ResponseEntity<String> visualizerLowest(@RequestParam(required = false) Map<String, String> query) {
+        // expects ?uniprotId=...&cid=...&taskId=...
+        return proxyGet("/visualizer/pdb/lowest", query);
+    }
+
+    @GetMapping("/deepkinome/visualizer/pdb/download")
+    public ResponseEntity<String> visualizerDownload(@RequestParam(required = false) Map<String, String> query) {
+        // expects ?uniprotId=...&cid=...&taskId=...
+        return proxyGet("/visualizer/pdb/download", query);
+    }
+
+    @GetMapping("/deepkinome/pocket")
+    public ResponseEntity<String> pocket(@RequestParam(required = false) Map<String, String> query) {
+        // expects ?id=<uniprotId>
+        return proxyGet("/pocket", query);
+    }
+
 }
