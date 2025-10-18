@@ -188,5 +188,22 @@ public class NodeService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<NodeResponse> findByProjectId(Long projectId) {
+        var nodes = nodeRepository.findByProjectId(projectId);
+        return nodes.stream()
+                .map(n -> new NodeResponse(
+                        n.getId(),
+                        projectId,           // NodeResponse의 두 번째 인자 (projectId)
+                        n.getType(),         // NodeType
+                        n.getName(),
+                        n.getStatus(),
+                        n.getX(),
+                        n.getY()
+                ))
+                .toList();
+    }
+
+
 
 }

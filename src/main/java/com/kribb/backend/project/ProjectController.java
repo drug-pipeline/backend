@@ -39,4 +39,15 @@ public class ProjectController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}/graph")
+    public ResponseEntity<GraphResponse> getGraph(
+            @PathVariable Long id,
+            @RequestParam(name = "include", required = false, defaultValue = "nodes,links,details")
+            String includeCsv
+    ) {
+        return ResponseEntity.ok(service.getGraph(id, includeCsv));
+    }
+
+
 }
